@@ -1,0 +1,28 @@
+name: Identify Tag Branch
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on tags starting with 'v'
+
+jobs:
+  identify-tag-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v3
+
+      - name: Get the commit SHA for the tag
+        id: get_commit
+        run: echo "commit_sha=$(git rev-list -n 1 ${{ github.ref }})" >> $GITHUB_ENV
+
+      - name: Get the branches that contain the commit
+        id: get_branches
+        run: |
+          branches=$(git branch -r --contains ${{ env.commit_sha }})
+          echo "branches=$branches" >> $GITHUB_ENV
+
+      - name: Output the branch information
+        run: |
+          echo "Tag ${{ github.ref }} was created on the following branches:"
+          echo "${{ env.branches }}"
