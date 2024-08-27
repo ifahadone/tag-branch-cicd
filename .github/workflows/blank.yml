@@ -24,7 +24,7 @@ jobs:
       - name: Get the branches that contain the commit
         id: get_branches
         run: |
-          branches=$(git branch -r --contains ${{ env.commit_sha }} | sed 's/origin\///')
+          branches=$(git branch -r --contains ${{ env.commit_sha }} | sed 's/origin\///' | tr '\n' ' ')
           echo "branches=${branches}" >> $GITHUB_ENV
 
       - name: Output the branch information
