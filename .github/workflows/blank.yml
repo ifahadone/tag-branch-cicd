@@ -2,8 +2,9 @@ name: Identify Tag Branch
 
 on:
   push:
-    branches:
-      - master
+    tags:
+      - 'v*'
+      
 jobs:
   TARGET-ENV-STAGE:
     runs-on: ubuntu-latest
