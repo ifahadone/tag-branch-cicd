@@ -7,45 +7,45 @@ on:
       
 jobs:
   TARGET-ENV-STAGE:
-    runs-on: ubuntu-latest
-    outputs:
-      ENVIRONMENT_STAGE: ${{ steps.set_env.outputs.ENVIRONMENT_STAGE }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get the commit associated with the tag
-        run: |
-          TAG_COMMIT=$(git rev-list -n 1 $GITHUB_REF)
-          echo "Commit associated with the tag: $TAG_COMMIT"
-          echo "TAG_COMMIT=$TAG_COMMIT" >> $GITHUB_ENV
-
-      - name: Find branch containing the commit
-        run: |
-          BRANCH=$(git branch --contains $(git rev-list -n 1 $GITHUB_REF) | head -n 1 | sed 's# *refs/origin/##')
-          echo "The tag is associated with the following branch: $BRANCH"
-          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
-
-      - name: Derive environment stage from branch
-        id: set_env
-        run: |
-          if [[ "$BRANCH" == release/* ]]; then
-            if [[ "$BRANCH" == *"uat"* ]]; then
-              ENVIRONMENT_STAGE="uat"
-            elif [[ "$BRANCH" == *"sit"* ]]; then
-              ENVIRONMENT_STAGE="sit"
-            elif [[ "$BRANCH" == *"prod"* ]]; then
-              ENVIRONMENT_STAGE="prod"
+      runs-on: RUNNER-LINUX1-8
+      outputs:
+        ENVIRONMENT_STAGE: ${{ steps.set_env.outputs.ENVIRONMENT_STAGE }}
+  
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+  
+        - name: Get the commit associated with the tag
+          run: |
+            TAG_COMMIT=$(git rev-list -n 1 $GITHUB_REF)
+            echo "Commit associated with the tag: $TAG_COMMIT"
+            echo "TAG_COMMIT=$TAG_COMMIT" >> $GITHUB_ENV
+  
+        - name: Find branch containing the commit
+          run: |
+            BRANCH=$(git for-each-ref --format='%(refname:short)' --contains $TAG_COMMIT refs/remotes/origin/ | head -n 1 | sed 's#^origin/##')
+            echo "The tag is associated with the following branch: $BRANCH"
+            echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+  
+        - name: Derive environment stage from branch
+          id: set_env
+          run: |
+            if [[ "$BRANCH" == release/* ]]; then
+              if [[ "$BRANCH" == *"uat"* ]]; then
+                ENVIRONMENT_STAGE="uat"
+              elif [[ "$BRANCH" == *"sit"* ]]; then
+                ENVIRONMENT_STAGE="sit"
+              elif [[ "$BRANCH" == *"prod"* ]]; then
+                ENVIRONMENT_STAGE="prod"
+              else
+                echo "Branch does not match known environment stages. Exiting..."
+                exit 1
+              fi
             else
-              echo "Branch does not match known environment stages. Exiting..."
+              echo "Branch does not match release pattern. Exiting..."
               exit 1
             fi
-          else
-            echo "Branch does not match release pattern. Exiting..."
-            exit 1
-          fi
-          echo "ENVIRONMENT_STAGE=$ENVIRONMENT_STAGE" >> $GITHUB_ENV
-          echo "ENVIRONMENT_STAGE=$ENVIRONMENT_STAGE" >> $GITHUB_OUTPUT
+            echo "ENVIRONMENT_STAGE=$ENVIRONMENT_STAGE" >> $GITHUB_ENV
+            echo "ENVIRONMENT_STAGE=$ENVIRONMENT_STAGE" >> $GITHUB_OUTPUT
