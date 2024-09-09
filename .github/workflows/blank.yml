@@ -2,36 +2,49 @@ name: Identify Tag Branch
 
 on:
   push:
-    tags:
-      - 'v*'  # Trigger on tags starting with 'v'
-
+    branches:
+      - master
 jobs:
-  identify-tag-branch:
+  TARGET-ENV-STAGE:
     runs-on: ubuntu-latest
+    outputs:
+      ENVIRONMENT_STAGE: ${{ steps.set_env.outputs.ENVIRONMENT_STAGE }}
+
     steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Ensure that all branches and tags are fetched
+          fetch-depth: 0
 
-      - name: Get the commit SHA for the tag
-        id: get_commit
-        run: echo "commit_sha=$(git rev-list -n 1 ${{ github.ref }})" >> $GITHUB_ENV
-
-      - name: Fetch all branches
-        run: git fetch --all
-
-      - name: Get the branches that contain the commit
-        id: get_branches
+      - name: Get the commit associated with the tag
         run: |
-          branches=$(git branch -r --contains ${{ env.commit_sha }} | sed 's/origin\///')
-          echo "branches=${branches}" >> $GITHUB_ENV
+          TAG_COMMIT=$(git rev-list -n 1 $GITHUB_REF)
+          echo "Commit associated with the tag: $TAG_COMMIT"
+          echo "TAG_COMMIT=$TAG_COMMIT" >> $GITHUB_ENV
 
-      - name: Output the branch information
+      - name: Find branch containing the commit
         run: |
-          if [ -z "${{ env.branches }}" ]; then
-            echo "Tag ${{ github.ref }} was created on a detached HEAD or the branch was deleted."
+          BRANCH=$(git branch --contains $(git rev-list -n 1 $GITHUB_REF) | head -n 1 | sed 's# *refs/origin/##')
+          echo "The tag is associated with the following branch: $BRANCH"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+
+      - name: Derive environment stage from branch
+        id: set_env
+        run: |
+          if [[ "$BRANCH" == release/* ]]; then
+            if [[ "$BRANCH" == *"uat"* ]]; then
+              ENVIRONMENT_STAGE="uat"
+            elif [[ "$BRANCH" == *"sit"* ]]; then
+              ENVIRONMENT_STAGE="sit"
+            elif [[ "$BRANCH" == *"prod"* ]]; then
+              ENVIRONMENT_STAGE="prod"
+            else
+              echo "Branch does not match known environment stages. Exiting..."
+              exit 1
+            fi
           else
-            echo "Tag ${{ github.ref }} was created on the following branches:"
-            echo "${{ env.branches }}"
+            echo "Branch does not match release pattern. Exiting..."
+            exit 1
           fi
+          echo "ENVIRONMENT_STAGE=$ENVIRONMENT_STAGE" >> $GITHUB_ENV
+          echo "ENVIRONMENT_STAGE=$ENVIRONMENT_STAGE" >> $GITHUB_OUTPUT
